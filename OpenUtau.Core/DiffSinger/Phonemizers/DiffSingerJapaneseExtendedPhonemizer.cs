@@ -238,15 +238,27 @@ namespace OpenUtau.Core.DiffSinger {
             };
         }
 
+        // thank you cadlaxa
         private bool ShouldReplacePhoneme(string phoneme, out string replacement) {
-            replacement = phoneme;
+            replacement = phoneme; // Defaults to the base phoneme if not found yk
             var langCode = GetLangCode() + "/";
 
-            if (phoneme == "cl" && !HasPhoneme("cl")) {
-                replacement = langCode + "cl";  // trying to replace cl -> ja/cl if singer doesn't have cl
+            // If the voicebank has the base phoneme, no replacement is needed
+            if (HasPhoneme(phoneme)) {
+                return false;
+            }
+
+            // If the base is missing, dynamically check for the "ja/" prefix
+            if (HasPhoneme(langCode + phoneme)) {
+                replacement = langCode + phoneme;
                 return true;
             }
 
+            // Handle the "cl" exception specifically just in case
+            if (phoneme == "cl" && HasPhoneme(langCode + "cl")) {
+                replacement = langCode + "cl";
+                return true;
+            }
             return false;
         } 
     }
