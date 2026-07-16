@@ -8,7 +8,7 @@ namespace OpenUtau.Core.G2p {
     public class JapaneseRuleBasedG2p : IG2p {
         private static readonly string[] validPhonemes = {
             "a", "i", "u", "e", "o",  "N",
-            "k", "s", "t", "n", "h", "f", "m", "y", "r", "w",
+            "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v",
             "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "cl", "q",
             "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
         };
@@ -17,7 +17,6 @@ namespace OpenUtau.Core.G2p {
         private static readonly Dictionary<string, string[]> KanaMap = new Dictionary<string, string[]> {
             // Vowels
             { "あ", new[] { "a" } }, { "い", new[] { "i" } }, { "う", new[] { "u" } }, { "え", new[] { "e" } }, { "お", new[] { "o" } },
-            { "ぁ", new[] { "a" } }, { "ぃ", new[] { "i" } }, { "ぅ", new[] { "u" } }, { "ぇ", new[] { "e" } }, { "ぉ", new[] { "o" } },
 
             // K-series
             { "か", new[] { "k", "a" } }, { "き", new[] { "k", "i" } }, { "く", new[] { "k", "u" } }, { "け", new[] { "k", "e" } }, { "こ", new[] { "k", "o" } },
@@ -49,10 +48,13 @@ namespace OpenUtau.Core.G2p {
             { "ら", new[] { "r", "a" } }, { "り", new[] { "r", "i" } }, { "る", new[] { "r", "u" } }, { "れ", new[] { "r", "e" } }, { "ろ", new[] { "r", "o" } },
 
             // W-series
-            { "わ", new[] { "w", "a" } }, { "を", new[] { "w", "o" } }, { "ん", new[] { "N" } }, { "っ", new[] { "cl" } }
+            { "わ", new[] { "w", "a" } }, { "を", new[] { "w", "o" } },
+            
+            // etc.
+            { "ん", new[] { "N" } }, { "っ", new[] { "cl" } }, { "ヴ", new[] { "v", "u"}}, { "ゔ", new[] { "v", "u"}}
         };
 
-        private static readonly string[] romajiMultiChar = { "sh", "ch", "ts", "ky", "sy", "ty", "ny", "ry" };
+        private static readonly string[] romajiMultiChar = { "sh", "ch", "ts", "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry" };
 
         public bool IsGlide(string symbol) => symbol == "w" || symbol == "y";
         public bool IsValidSymbol(string symbol) => validPhonemes.Contains(symbol);
@@ -160,23 +162,33 @@ namespace OpenUtau.Core.G2p {
             return phonemes.Count == 0 ? null : phonemes.ToArray();
         }
 
-        private bool IsSmallVowel(char c) => "ゃゅょャュョぃぇ".Contains(c);
+        private bool IsSmallVowel(char c) => "ゃゅょャュョぁぃぅぇぉ".Contains(c);
+
+        // ゃ/ゅ/ょ can trigger Xy variants (e.g. ふゅ -> fy+u). ぁ/ぃ/ぅ/ぇ/ぉ never do.
+        private bool IsYoonGlideVowel(char c) => "ゃゅょャュョ".Contains(c);
 
         private string GetYoonVowel(char smallVowel) => smallVowel switch {
             'ゃ' or 'ャ' => "a",
             'ゅ' or 'ュ' => "u",
             'ょ' or 'ョ' => "o",
-            'ぃ' => "i",
-            'ぇ' => "e",
+            'ぁ' or 'ァ' => "a",
+            'ぃ' or 'ィ' => "i",
+            'ぅ' or 'ゥ' => "u",
+            'ぇ' or 'ェ' => "e",
+            'ぉ' or 'ォ' => "o",
             _ => ""
         };
 
-            private string GetYoonConsonant(string consonant, char smallVowel) {
-            // Single consonant: k + ゃ -> ky (but j stays as j, like sh/ch stay as-is)
-            if (consonant.Length == 1 && !IsVowel(consonant) && consonant != "j") {
-                return consonant + "y";
+        private string GetYoonConsonant(string consonant, char smallVowel) {
+            // Only ゃ/ゅ/ょ can trigger Xy variants; ぁ/ぃ/ぅ/ぇ/ぉ never add a glide.
+            if (!IsYoonGlideVowel(smallVowel)) return consonant;
+
+            // Single consonant: check if an "Xy" variant exists in validPhonemes (e.g. fy, ky)
+            if (consonant.Length == 1 && !IsVowel(consonant)) {
+                string candidate = consonant + "y";
+                if (validPhonemes.Contains(candidate)) return candidate;
             }
-            // Multi-char consonant already in combined form (sh, ch, etc.) or j
+            // Multi-char consonants (sh, ch, ts, j) stay as-is — no shy/chy/jy in valid set.
             return consonant;
         }
     }
@@ -196,9 +208,9 @@ namespace OpenUtau.Core.DiffSinger {
         };
 
         protected override string[] GetBaseG2pConsonants() => new string[] {
-            "k", "s", "t", "n", "h", "m", "y", "r", "w",
-            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", 
-            "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "by", "py", "my", "ry"
+            "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v",
+            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "q",
+            "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
         };
 
         // I have no idea why this doesn't work.
