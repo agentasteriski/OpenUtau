@@ -8,9 +8,9 @@ namespace OpenUtau.Core.G2p {
     public class JapaneseRuleBasedG2p : IG2p {
         private static readonly string[] validPhonemes = {
             "a", "i", "u", "e", "o",  "N",
-            "k", "s", "t", "n", "h", "m", "y", "r", "w",
+            "k", "s", "t", "n", "h", "f", "m", "y", "r", "w",
             "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "cl", "q",
-            "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "by", "py", "my", "ry"
+            "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
         };
 
         // all the single hiragana get defined directly
