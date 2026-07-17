@@ -4,12 +4,13 @@ using System.Linq;
 using OpenUtau.Api;
 using OpenUtau.Core.G2p;
 
+#nullable enable
 namespace OpenUtau.Core.G2p {
     public class JapaneseRuleBasedG2p : IG2p {
         private static readonly string[] validPhonemes = {
             "a", "i", "u", "e", "o",  "N",
-            "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v",
-            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "cl", "q",
+            "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v", "l",
+            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "cl", "q",
             "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
         };
 
@@ -51,7 +52,10 @@ namespace OpenUtau.Core.G2p {
             { "わ", new[] { "w", "a" } }, { "を", new[] { "w", "o" } },
             
             // etc.
-            { "ん", new[] { "N" } }, { "っ", new[] { "cl" } }, { "ヴ", new[] { "v", "u"}}, { "ゔ", new[] { "v", "u"}}
+            { "ん", new[] { "N" } }, { "っ", new[] { "cl" } }, { "ヴ", new[] { "v", "u"}}, { "ゔ", new[] { "v", "u"}},
+
+            // katakana R series -> L
+            { "ラ", new[] { "l", "a" } }, { "リ", new[] { "l", "i" } }, { "ル", new[] { "l", "u" } }, { "レ", new[] { "l", "e" } }, { "ロ", new[] { "l", "o" } },
         };
 
         private static readonly string[] romajiMultiChar = { "sh", "ch", "ts", "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry" };
@@ -233,20 +237,20 @@ namespace OpenUtau.Core.DiffSinger {
         };
 
         protected override string[] GetBaseG2pConsonants() => new string[] {
-            "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v",
-            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "q",
+            "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v", "l",
+            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "cl", "q",
             "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
         };
 
         // I have no idea why this doesn't work.
         public override Result Process(Note[] notes, Note? prev, Note? next, Note? prevNeighbour, Note? nextNeighbour, Note[] prevs) {
-
             if (notes[0].lyric == "-") {
                 return MakeSimpleResult("SP");
             }
             if (notes[0].lyric == "br") {
                 return MakeSimpleResult("AP");
             }
+ 
             if (!partResult.TryGetValue(notes[0].position, out var phonemes)) {
                 throw new Exception("Result not found in the part");
             }
