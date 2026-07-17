@@ -73,14 +73,39 @@ namespace OpenUtau.Core.G2p {
             int i = 0;
             string text = input;
 
-            // 1. Handle Romaji Doubled Consonant (e.g. 'kk' -> 'cl', 'k')
-            // We do this check on the raw text first to handle the start of the string.
+                        // 1. Handle Romaji Doubled Consonant (e.g. 'kk' -> 'cl', 'k')
+            // Check multi-char consonants first so 'cchi' isn't misread as doubled 'c'.
+            if (i + 4 <= text.Length) {
+                string twoChar = char.ToLowerInvariant(text[i]).ToString() + char.ToLowerInvariant(text[i+1]).ToString();
+                if (romajiMultiChar.Contains(twoChar) && twoChar != "nn") {
+                    string nextTwo = char.ToLowerInvariant(text[i+2]).ToString() + char.ToLowerInvariant(text[i+3]).ToString();
+                    if (twoChar == nextTwo) {
+                        phonemes.Add("cl");
+                        phonemes.Add(twoChar);
+                        i += 4;
+                    }
+                }
+            }
+                        // Single-char doubling fallback.
             if (i + 1 < text.Length && char.IsLetter(text[i]) && char.ToLower(text[i]) == char.ToLower(text[i+1])) {
                 string c = char.ToLower(text[i]).ToString();
-                if (c != "n" && c != "m") { // 'nn' is usually handled by the 'n' rules
+                if (c != "n") { // 'nn' is usually handled by the 'n' rules
                     phonemes.Add("cl");
-                    phonemes.Add(c);
-                    i += 2;
+                    // Check if combining this doubled letter with what follows forms a multi-char consonant.
+                    // e.g. ttsu → cl + ts (not cl + t)
+                    bool foundMulti = false;
+                    foreach (var multi in romajiMultiChar) {
+                        if (multi.StartsWith(c) && text.Substring(i+2).StartsWith(multi.Substring(1), StringComparison.OrdinalIgnoreCase)) {
+                            phonemes.Add(multi);
+                            i += 2 + multi.Length - 1; // skip doubled char + rest of multi-char
+                            foundMulti = true;
+                            break;
+                        }
+                    }
+                    if (!foundMulti) {
+                        phonemes.Add(c);
+                        i += 2;
+                    }
                 }
             }
 
