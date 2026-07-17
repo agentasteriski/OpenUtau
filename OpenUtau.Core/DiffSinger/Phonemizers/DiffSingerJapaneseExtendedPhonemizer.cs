@@ -73,7 +73,7 @@ namespace OpenUtau.Core.G2p {
             int i = 0;
             string text = input;
 
-                        // 1. Handle Romaji Doubled Consonant (e.g. 'kk' -> 'cl', 'k')
+            // 1. Handle Romaji Doubled Consonant (e.g. 'kk' -> 'cl', 'k')
             // Check multi-char consonants first so 'cchi' isn't misread as doubled 'c'.
             if (i + 4 <= text.Length) {
                 string twoChar = char.ToLowerInvariant(text[i]).ToString() + char.ToLowerInvariant(text[i+1]).ToString();
@@ -86,7 +86,7 @@ namespace OpenUtau.Core.G2p {
                     }
                 }
             }
-                        // Single-char doubling fallback.
+            // Single-char doubling fallback.
             if (i + 1 < text.Length && char.IsLetter(text[i]) && char.ToLower(text[i]) == char.ToLower(text[i+1])) {
                 string c = char.ToLower(text[i]).ToString();
                 if (c != "n") { // 'nn' is usually handled by the 'n' rules
@@ -189,7 +189,7 @@ namespace OpenUtau.Core.G2p {
 
         private bool IsSmallVowel(char c) => "ゃゅょャュョぁぃぅぇぉ".Contains(c);
 
-        // ゃ/ゅ/ょ can trigger Xy variants (e.g. ふゅ -> fy+u). ぁ/ぃ/ぅ/ぇ/ぉ never do.
+        // ゃ/ゅ/ょ can trigger Cy variants (e.g. ふゅ -> fy+u). ぁ/ぃ/ぅ/ぇ/ぉ never do.
         private bool IsYoonGlideVowel(char c) => "ゃゅょャュョ".Contains(c);
 
         private string GetYoonVowel(char smallVowel) => smallVowel switch {
@@ -205,15 +205,15 @@ namespace OpenUtau.Core.G2p {
         };
 
         private string GetYoonConsonant(string consonant, char smallVowel) {
-            // Only ゃ/ゅ/ょ can trigger Xy variants; ぁ/ぃ/ぅ/ぇ/ぉ never add a glide.
+            // Only ゃ/ゅ/ょ can trigger Cy variants; ぁ/ぃ/ぅ/ぇ/ぉ never add a glide.
             if (!IsYoonGlideVowel(smallVowel)) return consonant;
 
-            // Single consonant: check if an "Xy" variant exists in validPhonemes (e.g. fy, ky)
+            // Single consonant: check if an "Cy" variant exists in validPhonemes (e.g. fy, ky)
             if (consonant.Length == 1 && !IsVowel(consonant)) {
                 string candidate = consonant + "y";
                 if (validPhonemes.Contains(candidate)) return candidate;
             }
-            // Multi-char consonants (sh, ch, ts, j) stay as-is — no shy/chy/jy in valid set.
+            // Multi-char consonants (sh, ch, ts) + j stay as-is — no shy/chy/jy in valid set.
             return consonant;
         }
     }
