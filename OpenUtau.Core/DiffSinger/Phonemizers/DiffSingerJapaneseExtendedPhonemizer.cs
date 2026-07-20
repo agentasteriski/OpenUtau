@@ -11,7 +11,8 @@ namespace OpenUtau.Core.G2p {
             "a", "i", "u", "e", "o",  "N",
             "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v", "l",
             "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "cl", "q",
-            "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
+            "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry",
+            "SP", "AP"
         };
 
         // all the single hiragana get defined directly
@@ -69,6 +70,9 @@ namespace OpenUtau.Core.G2p {
 
         public string[] Query(string grapheme) {
             if (string.IsNullOrEmpty(grapheme)) return null;
+            // Handle pause/silence tokens directly
+            if (grapheme == "SP") return new[] { "SP" };
+            if (grapheme == "AP") return new[] { "AP" };
             return Predict(grapheme);
         }
 
@@ -234,18 +238,13 @@ namespace OpenUtau.Core.DiffSinger {
 
         protected override string[] GetBaseG2pConsonants() => new string[] {
             "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v", "l",
-            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "cl", "q",
+            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "q",
             "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
         };
 
         // I have no idea why this doesn't work.
         public override Result Process(Note[] notes, Note? prev, Note? next, Note? prevNeighbour, Note? nextNeighbour, Note[] prevs) {
-            if (notes[0].lyric == "-") {
-                return MakeSimpleResult("SP");
-            }
-            if (notes[0].lyric == "br") {
-                return MakeSimpleResult("AP");
-            }
+
  
             if (!partResult.TryGetValue(notes[0].position, out var phonemes)) {
                 throw new Exception("Result not found in the part");
