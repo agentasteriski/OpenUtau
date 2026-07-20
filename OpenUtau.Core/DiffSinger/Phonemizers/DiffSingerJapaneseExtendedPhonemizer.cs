@@ -149,12 +149,7 @@ namespace OpenUtau.Core.G2p {
                 string charStr = c.ToString();
                 if (KanaMap.TryGetValue(charStr, out var components)) {
                     foreach (var comp in components) {
-                        // Handle 'n' vs 'N' logic
-                        if (comp == "n" && !IsVowel(text[i+1 == text.Length ? i : i+1].ToString())) {
-                            phonemes.Add("N");
-                        } else {
-                            phonemes.Add(comp);
-                        }
+                        phonemes.Add(comp);
                     }
                     i++;
                 }
@@ -173,9 +168,10 @@ namespace OpenUtau.Core.G2p {
 
                     if (!matchedMulti) {
                         string single = char.ToLower(text[i]).ToString();
-                        if (single == "n") {
-                            // Look ahead: if it's not a vowel, it's the moraic 'N'
-                            if (i + 1 < text.Length && !IsVowel(text[i+1].ToString()))
+                                                if (single == "n") {
+                            // Look ahead: if not followed by a vowel (or at end of string), it's the moraic 'N'
+                            bool nextIsVowel = (i + 1 < text.Length) && IsVowel(char.ToLowerInvariant(text[i+1]).ToString());
+                            if (!nextIsVowel)
                                 phonemes.Add("N");
                             else
                                 phonemes.Add("n");
@@ -224,7 +220,7 @@ namespace OpenUtau.Core.G2p {
 }
 
 namespace OpenUtau.Core.DiffSinger {
-    [Phonemizer("DiffSinger Rule-based Japanese Phonemizer", "DIFFS JA+", "AgentAsteriski", "JA")]
+    [Phonemizer("DiffSinger Japanese Extended Phonemizer", "DIFFS JA+", "AgentAsteriski", "JA")]
     public class DiffSingerJapaneseExtendedPhonemizer : DiffSingerG2pPhonemizer {
         protected override string GetDictionaryName() => "dsdict-ja.yaml";
 
