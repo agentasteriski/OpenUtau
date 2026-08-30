@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Reactive;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
@@ -11,6 +10,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using OpenUtau.App.ViewModels;
 using OpenUtau.App.Views;
 using OpenUtau.Core;
@@ -19,6 +19,7 @@ using OpenUtau.Core.Ustx;
 using OpenUtau.Core.Util;
 using OpenUtau.ViewModels;
 using ReactiveUI;
+using ReactiveUI.Primitives;
 using Serilog;
 
 namespace OpenUtau.App.Controls {
@@ -43,9 +44,9 @@ namespace OpenUtau.App.Controls {
         private Point rangeSelectStartPoint = default;
         private const double RangeSelectThreshold = 5; // pixels
 
-        private ReactiveCommand<Unit, Unit>? lyricsDialogCommand;
-        private ReactiveCommand<Unit, Unit>? noteDefaultsCommand;
-        private ReactiveCommand<BatchEdit, Unit>? noteBatchEditCommand;
+        private ReactiveCommand<RxVoid, RxVoid>? lyricsDialogCommand;
+        private ReactiveCommand<RxVoid, RxVoid>? noteDefaultsCommand;
+        private ReactiveCommand<BatchEdit, RxVoid>? noteBatchEditCommand;
 
         private Window RootWindow => (Window)TopLevel.GetTopLevel(this)!;
 
@@ -236,6 +237,14 @@ namespace OpenUtau.App.Controls {
                     }
                 });
 
+            MessageBus.Current.Listen<PianorollRefreshEvent>()
+                .Subscribe(e => {
+                    if(e.refreshItem == "Attachment") {
+                        MainWindow?.SetPianoRollAttachment();
+                        ViewModel.RaisePropertyChanged(nameof(ViewModel.PianoRollDetached));
+                    }
+                });
+
             DocManager.Inst.AddSubscriber(this);
         }
 
@@ -347,19 +356,22 @@ namespace OpenUtau.App.Controls {
         }
 
         void OnMenuDetachPianoRoll(object sender, RoutedEventArgs args) {
-            MainWindow?.SetPianoRollAttachment();
-            ViewModel.RaisePropertyChanged(nameof(ViewModel.PianoRollDetached));
+            Preferences.Default.DetachPianoRoll ^= true;
+            Preferences.Save();
+            MessageBus.Current.SendMessage(new PianorollRefreshEvent("Attachment"));
+            Dispatcher.UIThread.Post(() => {
+                ViewModel.RaisePropertyChanged(nameof(ViewModel.HideMenuItemVisible));
+            });
         }
 
-        void OnMenuHidePianoRoll(object sender, RoutedEventArgs args) {
+        void OnHidePianoRoll(object sender, RoutedEventArgs args) {
             if (RootWindow.DataContext is MainWindowViewModel mwvm) {
                 mwvm.ShowPianoRoll = false;
-            } else {
-                RootWindow.Hide();
             }
         }
 
         // Edit Tools
+
         private CancellationTokenSource? _longPressCts;
         private async void OnToolButtonPointerPressed(object? sender, PointerPressedEventArgs args) {
             if (!args.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
@@ -536,7 +548,7 @@ namespace OpenUtau.App.Controls {
             dialog.ShowDialog(RootWindow);
         }
 
-        private void OnPianoRollFocus(object sender, GotFocusEventArgs e) {
+        private void OnPianoRollFocus(object sender, FocusChangedEventArgs e) {
             var input = e.Source as InputElement;
             if (input is TextBox or ComboBox or ComboBoxItem) {
                 input.Focus();
@@ -700,6 +712,9 @@ namespace OpenUtau.App.Controls {
                     }
                     editState = null;
                 } else {
+                    args.Pointer.Capture(null);
+                    editState = null;
+                    Cursor = null; 
                     return;
                 }
             }
@@ -784,17 +799,17 @@ namespace OpenUtau.App.Controls {
             }
             var noteHitInfo = ViewModel.NotesViewModel.HitTest.HitTestNote(point.Position);
             if (noteHitInfo.hitBody) {
+                var selectedNotes = ViewModel.NotesViewModel.Selection.ToList();
                 if (noteHitInfo.hitResizeArea) {
                     editState = new NoteResizeEditState(
                         control, ViewModel, this, noteHitInfo.note,
-                        args.KeyModifiers == KeyModifiers.Alt,
                         fromStart: noteHitInfo.hitResizeAreaFromStart);
                     Cursor = ViewConstants.cursorSizeWE;
-                } else if (args.KeyModifiers == cmdKey) {
+                } else if (args.KeyModifiers == cmdKey && selectedNotes.Count > 1) {
                     ViewModel.NotesViewModel.ToggleSelectNote(noteHitInfo.note);
-                } else if (args.KeyModifiers == KeyModifiers.Shift) {
+                } else if (args.KeyModifiers == KeyModifiers.Shift && selectedNotes.Count > 0) {
                     ViewModel.NotesViewModel.SelectNotesUntil(noteHitInfo.note);
-                } else if (ViewModel.EditTool.CurrentTool == EditTools.KnifeTool) {
+                } else if (ViewModel.EditTool.CurrentTool == EditTools.KnifeTool && args.KeyModifiers != cmdKey) {
                     ViewModel.NotesViewModel.DeselectNotes();
                     editState = new NoteSplitEditState(
                             control, ViewModel, this, noteHitInfo.note);
@@ -1020,6 +1035,7 @@ namespace OpenUtau.App.Controls {
                 return;
             }
             if (editState.MouseButton != args.InitialPressMouseButton) {
+                args.Pointer.Capture(null);
                 return;
             }
             var control = (Control)sender;
@@ -1050,6 +1066,7 @@ namespace OpenUtau.App.Controls {
             }
             editState = null;
             Cursor = null;
+            args.Pointer.Capture(null);
         }
 
         public void NotesCanvasDoubleTapped(object sender, TappedEventArgs args) {
@@ -1182,6 +1199,9 @@ namespace OpenUtau.App.Controls {
                 return;
             }
             if (editState.MouseButton != args.InitialPressMouseButton) {
+                args.Pointer.Capture(null);
+                editState = null;
+                Cursor = null;
                 return;
             }
             var control = (Control)sender;
@@ -1192,6 +1212,7 @@ namespace OpenUtau.App.Controls {
             editState.End(point.Pointer, point.Position);
             editState = null;
             Cursor = null;
+            args.Pointer.Capture(null);
         }
 
         public void PhonemeCanvasDoubleTapped(object sender, TappedEventArgs args) {
@@ -1322,6 +1343,9 @@ namespace OpenUtau.App.Controls {
                 return;
             }
             if (editState.MouseButton != args.InitialPressMouseButton) {
+                args.Pointer.Capture(null);
+                editState = null;
+                Cursor = null;
                 return;
             }
             var control = (Control)sender;
@@ -1330,6 +1354,7 @@ namespace OpenUtau.App.Controls {
             editState.End(point.Pointer, point.Position);
             editState = null;
             Cursor = null;
+            args.Pointer.Capture(null);
         }
 
         public void BackgroundPointerMoved(object sender, PointerEventArgs args) {
@@ -2013,6 +2038,10 @@ namespace OpenUtau.App.Controls {
                 } else {
                     LoadingWindow.EndLoading();
                 }
+            } else if (cmd is WaveformReadyNotification) {
+                Dispatcher.UIThread.Post(() => {
+                    MessageBus.Current.SendMessage(new WaveformRefreshEvent());
+                }, Avalonia.Threading.DispatcherPriority.Normal);
             }
         }
     }
