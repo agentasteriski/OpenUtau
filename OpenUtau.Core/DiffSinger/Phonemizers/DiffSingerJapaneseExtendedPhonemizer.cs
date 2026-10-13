@@ -73,6 +73,7 @@ namespace OpenUtau.Core.G2p {
             // Handle pause/silence tokens directly
             if (grapheme == "SP") return new[] { "SP" };
             if (grapheme == "AP") return new[] { "AP" };
+            if (grapheme == "EP") return new[] { "EP" };
             return Predict(grapheme);
         }
 
