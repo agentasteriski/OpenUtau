@@ -150,6 +150,18 @@ namespace OpenUtau.Core.G2p {
                     continue;
                 }
 
+                // Handle い/う as glides when followed by small vowels (loanword patterns like いぇ -> ye)
+                if ((c == 'い' || c == 'イ') && i + 1 < text.Length && IsSmallVowel(text[i+1])) {
+                    phonemes.Add("y");
+                    i++;
+                    continue;
+                }
+                if ((c == 'う' || c == 'ウ') && i + 1 < text.Length && IsSmallVowel(text[i+1])) {
+                    phonemes.Add("w");
+                    i++;
+                    continue;
+                }
+
                 // Handle Kana
                 string charStr = c.ToString();
                 if (KanaMap.TryGetValue(charStr, out var components)) {
