@@ -251,7 +251,7 @@ namespace OpenUtau.Core.DiffSinger {
 
         protected override string[] GetBaseG2pConsonants() => new string[] {
             "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v", "l",
-            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "q",
+            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "q", "cl",
             "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
         };
 
@@ -303,11 +303,6 @@ namespace OpenUtau.Core.DiffSinger {
                 return true;
             }
 
-            // Handle the "cl" exception specifically just in case
-            if (phoneme == "cl" && HasPhoneme(langCode + "cl")) {
-                replacement = langCode + "cl";
-                return true;
-            }
             return false;
         } 
     }

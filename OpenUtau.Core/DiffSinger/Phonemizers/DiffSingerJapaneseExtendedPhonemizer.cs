@@ -8,7 +8,7 @@ using OpenUtau.Core.G2p;
 namespace OpenUtau.Core.G2p {
     public class JapaneseRuleBasedG2p : IG2p {
         private static readonly string[] validPhonemes = {
-            "a", "i", "u", "e", "o",  "N",
+            "a", "i", "u", "e", "o", "N",
             "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v", "l",
             "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "cl", "q",
             "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry",
@@ -150,6 +150,18 @@ namespace OpenUtau.Core.G2p {
                     continue;
                 }
 
+                // Handle い/う as glides when followed by small vowels (loanword patterns like いぇ -> ye)
+                if ((c == 'い' || c == 'イ') && i + 1 < text.Length && IsSmallVowel(text[i+1])) {
+                    phonemes.Add("y");
+                    i++;
+                    continue;
+                }
+                if ((c == 'う' || c == 'ウ') && i + 1 < text.Length && IsSmallVowel(text[i+1])) {
+                    phonemes.Add("w");
+                    i++;
+                    continue;
+                }
+
                 // Handle Kana
                 string charStr = c.ToString();
                 if (KanaMap.TryGetValue(charStr, out var components)) {
@@ -239,7 +251,7 @@ namespace OpenUtau.Core.DiffSinger {
 
         protected override string[] GetBaseG2pConsonants() => new string[] {
             "k", "s", "t", "n", "h", "f", "m", "y", "r", "w", "v", "l",
-            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "q",
+            "g", "z", "d", "b", "p", "j", "sh", "ch", "ts", "dz", "q", "cl",
             "ky", "gy", "sy", "zy", "ty", "dy", "ny", "hy", "fy", "by", "py", "my", "ry"
         };
 
@@ -291,11 +303,6 @@ namespace OpenUtau.Core.DiffSinger {
                 return true;
             }
 
-            // Handle the "cl" exception specifically just in case
-            if (phoneme == "cl" && HasPhoneme(langCode + "cl")) {
-                replacement = langCode + "cl";
-                return true;
-            }
             return false;
         } 
     }
